@@ -1,0 +1,15 @@
+# NestJS app: entry point is dist/main.js (built from src/main.ts). Do not use src/server.js.
+services:
+  - type: web
+    name: dexpay-back-end
+    env: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/main.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RENDER
+        value: "true"
+    healthCheckPath: /api/health
+
