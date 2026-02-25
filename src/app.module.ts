@@ -12,39 +12,40 @@ import { LogsModule } from './modules/logs/logs.module';
 import { MerchantsModule } from './modules/merchants/merchants.module';
 import { FeesPaymentsModule } from './modules/fees-payments/fees-payments.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { AddressModule } from './modules/address/address.module';
 import { DatabaseModule } from './database/database.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 @Module({
-  imports: [
-    // Configuration
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-    }),
+    imports: [
+          // Configuration
+      ConfigModule.forRoot({
+              isGlobal: true,
+              envFilePath: '.env',
+      }),
 
-    // Database
-    DatabaseModule,
+          // Database
+          DatabaseModule,
 
-    // Scheduler for cron jobs
-    ScheduleModule.forRoot(),
+          // Scheduler for cron jobs
+          ScheduleModule.forRoot(),
 
-    // Feature modules
-    OrdersModule,
-    EmailModule,
-    ImapModule,
-    MonitorOrdersModule,
-    AuthModule,
-    FraudModule,
-    LicensesModule,
-    LogsModule,
-    MerchantsModule,
-    FeesPaymentsModule,
-    CustomersModule,
-  ],
-  controllers: [AppController],
-  providers: [AppService],
+          // Feature modules
+          OrdersModule,
+          EmailModule,
+          ImapModule,
+          MonitorOrdersModule,
+          AuthModule,
+          FraudModule,
+          LicensesModule,
+          LogsModule,
+          MerchantsModule,
+          FeesPaymentsModule,
+          CustomersModule,
+          AddressModule,
+        ],
+    controllers: [AppController],
+    providers: [AppService],
 })
-export class AppModule {}
-
+  export class AppModule {}
