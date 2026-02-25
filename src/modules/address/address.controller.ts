@@ -1,7 +1,7 @@
 import { Controller, Get, Query, HttpException, HttpStatus } from '@nestjs/common';
 
-@Controller('api/address')
-export class AddressController {
+@Controller('address')
+  export class AddressController {
   private readonly GEOAPIFY_API_KEY = process.env.GEOAPIFY_API_KEY || '';
   private readonly GEOAPIFY_BASE_URL = 'https://api.geoapify.com/v1/geocode';
 
