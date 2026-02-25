@@ -20,9 +20,13 @@ import axios from 'axios';
       }
 
       try {
-              const url = `${this.GEOAPIFY_BASE_URL}/autocomplete?text=${encodeURIComponent(text)}&apiKey=${this.GEOAPIFY_API_KEY}&lang=${lang}&limit=8&filter=countrycode:ca&format=json`;
+              const url = `${this.GEOAPIFY_BASE_URL}/autocomplete?text=${encodeURIComponent(text)}&apiKey=${this.GEOAPIFY_API_KEY}&lang=${lang}&limit=8&type=street,housenumber&filter=countrycode:ca&format=json`;
+
+            console.log('Calling Geoapify URL:', url.replace(this.GEOAPIFY_API_KEY, 'HIDDEN'));
 
             const response = await axios.get(url, { timeout: 10000 });
+
+            console.log('Geoapify response status:', response.status);
 
             const data = response.data;
               const results = (data.results || []).map((result: any) => ({
@@ -41,11 +45,18 @@ import axios from 'axios';
 
             return { results };
       } catch (error: any) {
-              console.error('GEOAPIFY ERROR:', error?.response?.status, error?.response?.data || error?.message);
-              throw new HttpException(
-                        `Address lookup failed: ${error?.message || 'unknown'}`,
-                        HttpStatus.INTERNAL_SERVER_ERROR,
-                      );
+              console.error('GEOAPIFY ERROR DETAILS:', {
+                        message: error?.message,
+                        code: error?.code,
+                        status: error?.response?.status,
+                        statusText: error?.response?.statusText,
+                        data: error?.response?.data,
+              });
+
+            throw new HttpException(
+                      `Address lookup failed: ${error?.message || 'unknown'}`,
+                      HttpStatus.INTERNAL_SERVER_ERROR,
+                    );
       }
     }
 
@@ -67,7 +78,8 @@ import axios from 'axios';
       try {
               const addressParts = [street, city, state, postcode, 'Canada'].filter(Boolean);
               const fullAddress = addressParts.join(', ');
-              const url = `${this.GEOAPIFY_BASE_URL}/search?text=${encodeURIComponent(fullAddress)}&apiKey=${this.GEOAPIFY_API_KEY}&lang=en&limit=1&filter=countrycode:ca&format=json`;
+
+            const url = `${this.GEOAPIFY_BASE_URL}/search?text=${encodeURIComponent(fullAddress)}&apiKey=${this.GEOAPIFY_API_KEY}&lang=en&limit=1&filter=countrycode:ca&format=json`;
 
             const response = await axios.get(url, { timeout: 10000 });
               const data = response.data;
@@ -103,15 +115,29 @@ import axios from 'axios';
   @Get('health')
     async healthCheck() {
           const hasApiKey = !!this.GEOAPIFY_API_KEY;
-          if (hasApiKey) {
-                  try {
-                            const url = `${this.GEOAPIFY_BASE_URL}/autocomplete?text=test&apiKey=${this.GEOAPIFY_API_KEY}&limit=1&format=json`;
-                            const response = await axios.get(url, { timeout: 5000 });
-                            return { service: 'address', status: 'working', provider: 'geoapify', test: `Geoapify returned ${response.status}` };
-                  } catch (error: any) {
-                            return { service: 'address', status: 'error', provider: 'geoapify', error: error?.message };
-                  }
-          }
-          return { service: 'address', status: 'not_configured', provider: 'geoapify' };
+
+      if (hasApiKey) {
+              try {
+                        const url = `${this.GEOAPIFY_BASE_URL}/autocomplete?text=test&apiKey=${this.GEOAPIFY_API_KEY}&limit=1&format=json`;
+                        const response = await axios.get(url, { timeout: 5000 });
+                        return {
+                                    service: 'address',
+                                    status: 'working',
+                                    provider: 'geoapify',
+                                    test: `Geoapify returned ${response.status}`,
+                        };
+              } catch (error: any) {
+                        return {
+                                    service: 'address',
+                                    status: 'error',
+                                    provider: 'geoapify',
+                                    error: error?.message,
+                                    responseStatus: error?.response?.status,
+                                    responseData: error?.response?.data,
+                        };
+              }
+      }
+
+      return { service: 'address', status: 'not_configured', provider: 'geoapify' };
     }
 }
