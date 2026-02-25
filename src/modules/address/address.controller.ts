@@ -40,7 +40,6 @@ export class AddressController {
       );
 
       const data = response.data;
-
       const results = (data.results || []).map((result: any) => ({
         formatted: result.formatted,
         street: result.street,
