@@ -1,8 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import axios from 'axios';
 
-@Controller('api/address')
-export class AddressController {
+@Controller('address')
+  export class AddressController {
 
   @Get('autocomplete')
   async autocomplete(@Query('text') text: string) {
