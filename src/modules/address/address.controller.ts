@@ -11,8 +11,10 @@ import axios from 'axios';
       return { success: false, results: [] };
     }
 
-    const apiKey = process.env.GEOAPIFY_KEY;
-
+const apiKey = (process.env.GEOAPIFY_KEY || '').trim();
+if (!apiKey) {
+  return { success: false, message: 'GEOAPIFY_KEY is missing on server' };
+}
     const url =
       `https://api.geoapify.com/v1/geocode/autocomplete` +
       `?text=${encodeURIComponent(text)}` +
