@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { FraudModule } from './modules/fraud/fraud.module';
 import { LicensesModule } from './modules/licenses/licenses.module';
 import { LogsModule } from './modules/logs/logs.module';
+import { PluginConfigModule } from './modules/config/config.module';
 import { MerchantsModule } from './modules/merchants/merchants.module';
 import { FeesPaymentsModule } from './modules/fees-payments/fees-payments.module';
 import { CustomersModule } from './modules/customers/customers.module';
@@ -44,6 +45,7 @@ import { AppService } from './app.service';
           FeesPaymentsModule,
           CustomersModule,
           AddressModule,
+            PluginConfigModule,
         ],
     controllers: [AppController],
     providers: [AppService],
