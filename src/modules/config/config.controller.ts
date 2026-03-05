@@ -11,7 +11,7 @@ import { LicensesService } from '../licenses/licenses.service';
  * Response (401): { error: "Invalid license key" }
  * Response (403): { api_key: null, enabled: false }
  */
-@Controller('api/config')
+@Controller('config')
   export class ConfigController {
     private readonly GEOAPIFY_API_KEY = process.env.GEOAPIFY_API_KEY || '';
 
