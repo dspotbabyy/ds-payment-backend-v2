@@ -394,21 +394,24 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
     }
 
     const orderRefPatterns = [
-      /order[:\s]*#?(\d+)/i,
-      /reference[:\s]*([A-Z0-9-]+)/i,
-      /ref[:\s]*([A-Z0-9-]+)/i,
-      /#(\d+)/,
-      /ORD-(\d+)/,
-    ];
-    let orderReference: string | null = null;
-    for (const pattern of orderRefPatterns) {
-      const match = combinedText.match(pattern);
-      if (match) {
-        orderReference = match[1];
-        break;
-      }
-    }
-
+  /\b(ORDER\d{6,})\b/i,
+  /\breference[:\s]*(ORDER\d{6,})\b/i,
+  /\bref[:\s]*(ORDER\d{6,})\b/i,
+  /\border[:\s]*#?(\d+)\b/i,
+  /#(\d+)\b/,
+  /\bORD-(\d+)\b/i,
+];
+let orderReference: string | null = null;
+for (const pattern of orderRefPatterns) {
+  const match = combinedText.match(pattern);
+  if (match) {
+    orderReference = match[1]?.trim() || null;
+    break;
+  }
+}
+if (orderReference) {
+  orderReference = orderReference.toUpperCase();
+}
     const senderEmail = this.extractSenderEmailFromBody(combinedText);
 
     return { status, amount_cents, text: combinedText, orderReference, senderEmail };
@@ -538,20 +541,27 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
 
     // 100%: exact amount + order reference (e.g. woo_order_id)
     if (ev.orderReference) {
-      const exactMatch = await this.orderRepository.findOne({
-        where: {
-          total: amountDollars,
-          woo_order_id: ev.orderReference,
-          status: 'pending',
-        },
-        order: { date: 'DESC' },
-      });
+  let normalizedWooOrderId = ev.orderReference;
 
-      if (exactMatch) {
-        this.logger.log(`✅ Found exact match (ref+amount): Order ${exactMatch.id} → 100% confidence`);
-        return { order: exactMatch, confidence: 100 };
-      }
-    }
+  const orderPrefixMatch = ev.orderReference.match(/^ORDER0*(\d+)$/i);
+  if (orderPrefixMatch) {
+    normalizedWooOrderId = orderPrefixMatch[1];
+  }
+
+  const exactMatch = await this.orderRepository.findOne({
+    where: {
+      total: amountDollars,
+      woo_order_id: normalizedWooOrderId,
+      status: 'pending',
+    },
+    order: { date: 'DESC' },
+  });
+
+  if (exactMatch) {
+    this.logger.log(`✅ Found exact match (ref+amount): Order ${exactMatch.id} → 100% confidence`);
+    return { order: exactMatch, confidence: 100 };
+  }
+}
 
     // 90%: amount + sender email matches order.customer_email
     if (ev.senderEmail) {
@@ -609,13 +619,13 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
 
       if (ev.orderReference && candidateOrder.woo_order_id) {
         const refStr = candidateOrder.woo_order_id.toString();
-        if (ev.orderReference === refStr) {
+        const normalizedEventRef = ev.orderReference.replace(/^ORDER0*/i, '');
+        if (normalizedEventRef === refStr) {
           score += 30;
-        } else if (refStr.includes(ev.orderReference)) {
+        } else if (refStr.includes(normalizedEventRef)) {
           score += 20;
         }
       }
-
       if (score > bestScore && score >= 50) {
         bestScore = score;
         bestMatch = candidateOrder;
