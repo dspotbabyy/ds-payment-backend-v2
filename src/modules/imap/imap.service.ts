@@ -50,17 +50,17 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
     const imapPass = this.configService.get('IMAP_PASS');
 
     if (!imapHost || !imapUser || !imapPass) {
-      this.logger.warn('⚠️ IMAP credentials not configured, skipping IMAP initialization');
+      this.logger.warn('â ï¸ IMAP credentials not configured, skipping IMAP initialization');
       return;
     }
 
     try {
       await this.startImap();
-      this.logger.log('✅ IMAP listening...');
+      this.logger.log('â IMAP listening...');
     } catch (error: any) {
-      this.logger.error('❌ Error starting IMAP:', error?.message || error);
+      this.logger.error('â Error starting IMAP:', error?.message || error);
       // Don't crash the app - reconnection logic will handle it
-      this.logger.log('🔄 Will attempt to reconnect automatically...');
+      this.logger.log('ð Will attempt to reconnect automatically...');
     }
   }
 
@@ -74,9 +74,9 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
         // Remove all listeners to prevent errors during shutdown
         this.client.removeAllListeners();
         await this.client.logout();
-        this.logger.log('🛑 IMAP connection closed');
+        this.logger.log('ð IMAP connection closed');
       } catch (error) {
-        this.logger.error('❌ Error closing IMAP connection:', error);
+        this.logger.error('â Error closing IMAP connection:', error);
       }
     }
   }
@@ -102,20 +102,20 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
     // Set up error handler BEFORE connecting
     this.client.on('error', (err: any) => {
       // Prevent unhandled error events from crashing the app
-      this.logger.error(`❌ IMAP connection error: ${err.message}`, err.code);
+      this.logger.error(`â IMAP connection error: ${err.message}`, err.code);
       if (err.code === 'ETIMEOUT' || err.code === 'ECONNRESET' || err.code === 'EPIPE') {
-        this.logger.warn('🔄 Connection lost, will attempt to reconnect...');
+        this.logger.warn('ð Connection lost, will attempt to reconnect...');
         this.handleReconnect();
       } else {
         // For other errors, also attempt reconnection
-        this.logger.warn('🔄 Unexpected error, will attempt to reconnect...');
+        this.logger.warn('ð Unexpected error, will attempt to reconnect...');
         this.handleReconnect();
       }
     });
 
     // Handle connection close
     this.client.on('close', () => {
-      this.logger.warn('🔌 IMAP connection closed');
+      this.logger.warn('ð IMAP connection closed');
       if (!this.isReconnecting) {
         this.handleReconnect();
       }
@@ -129,7 +129,7 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
       this.reconnectAttempts = 0;
       this.isReconnecting = false;
     } catch (error: any) {
-      this.logger.error('❌ Error during IMAP connection:', error.message);
+      this.logger.error('â Error during IMAP connection:', error.message);
       // Clean up failed connection
       if (this.client) {
         try {
@@ -145,7 +145,7 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Process existing unread emails immediately
-    this.logger.log('🔍 Processing existing unread emails...');
+    this.logger.log('ð Processing existing unread emails...');
     try {
       for await (const message of this.client.fetch('*', {
         source: true,
@@ -154,17 +154,17 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
         flags: true,
       })) {
         this.logger.log(
-          `📧 Found message UID: ${message.uid}, Flags: ${Array.from(message.flags)}`,
+          `ð§ Found message UID: ${message.uid}, Flags: ${Array.from(message.flags)}`,
         );
         if (message.flags.has('\\Seen')) {
-          this.logger.log(`⏭️ Skipping already seen email: ${message.uid}`);
+          this.logger.log(`â­ï¸ Skipping already seen email: ${message.uid}`);
           continue;
         }
 
         // Check if this is an Interac notification email
         const envelope = message.envelope;
         const fromEmail = envelope?.from?.[0]?.address;
-        this.logger.log(`📧 Email from: ${fromEmail}`);
+        this.logger.log(`ð§ Email from: ${fromEmail}`);
 
         // Check for Interac notification emails
         const interacPatterns = [
@@ -180,27 +180,27 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
         );
 
         if (!fromEmail || !isInteracEmail) {
-          this.logger.log(`⏭️ Skipping non-Interac email from: ${fromEmail}`);
+          this.logger.log(`â­ï¸ Skipping non-Interac email from: ${fromEmail}`);
           continue;
         }
 
-        this.logger.log(`✅ Found Interac email from: ${fromEmail}`);
-        this.logger.log(`📧 Processing Interac notification email: ${message.uid}`);
+        this.logger.log(`â Found Interac email from: ${fromEmail}`);
+        this.logger.log(`ð§ Processing Interac notification email: ${message.uid}`);
 
         try {
           const parsed = await simpleParser(message.source);
           const combinedText = (parsed.text || '') + ' ' + (parsed.html || '');
 
           this.logger.log(
-            `📝 Email content preview: ${combinedText.substring(0, 200)}...`,
+            `ð Email content preview: ${combinedText.substring(0, 200)}...`,
           );
 
           const parsedEv = this.parseInteracEmail(combinedText);
-          if (parsedEv.amount_cents) this.logger.log(`💰 Amount detected: ${parsedEv.amount_cents} cents`);
-          if (parsedEv.orderReference) this.logger.log(`📋 Order reference: ${parsedEv.orderReference}`);
+          if (parsedEv.amount_cents) this.logger.log(`ð° Amount detected: ${parsedEv.amount_cents} cents`);
+          if (parsedEv.orderReference) this.logger.log(`ð Order reference: ${parsedEv.orderReference}`);
 
           const ev: PaymentEvent = { ...parsedEv, email_uid: message.uid };
-          this.logger.log('🔔 Processing email event:', {
+          this.logger.log('ð Processing email event:', {
             status: ev.status,
             amount_cents: ev.amount_cents,
             orderReference: ev.orderReference,
@@ -213,27 +213,27 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
           // Mark email as read ONLY after successfully processing and updating database
           if (processResult && this.client) {
             await this.client.messageFlagsAdd(message.uid, ['\\Seen']);
-            this.logger.log(`✅ Email ${message.uid} marked as read after successful processing`);
+            this.logger.log(`â Email ${message.uid} marked as read after successful processing`);
           } else if (!processResult) {
-            this.logger.log(`⚠️ Email ${message.uid} not marked as read (no order match or no update needed)`);
+            this.logger.log(`â ï¸ Email ${message.uid} not marked as read (no order match or no update needed)`);
           }
         } catch (error: unknown) {
           const err = error as { message?: string };
-          this.logger.error('❌ Error processing email:', error);
+          this.logger.error('â Error processing email:', error);
           this.logger.error(`Email UID: ${message.uid}`);
           this.logger.error(`Error details: ${err?.message ?? String(error)}`);
           // Don't mark as read if there was an error
         }
       }
     } catch (error) {
-      this.logger.error('❌ Error processing existing emails:', error);
+      this.logger.error('â Error processing existing emails:', error);
     }
 
     // Error handler is already set up before connection
 
     // Listen for new emails
     this.client.on('exists', async () => {
-      this.logger.log('🔔 EXISTS event fired - checking for unread emails...');
+      this.logger.log('ð EXISTS event fired - checking for unread emails...');
 
       for await (const message of this.client.fetch('*', {
         source: true,
@@ -246,7 +246,7 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
         const isSeen = message.flags.has('\\Seen');
 
         this.logger.log(
-          `📧 Found message UID: ${message.uid}, From: ${fromEmail}, Seen: ${isSeen}`,
+          `ð§ Found message UID: ${message.uid}, From: ${fromEmail}, Seen: ${isSeen}`,
         );
 
         // Accept emails from both interac.ca and payments.interac.ca
@@ -255,34 +255,34 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
           (!fromEmail.includes('interac.ca') &&
             !fromEmail.includes('payments.interac.ca'))
         ) {
-          this.logger.log(`⏭️ Skipping non-Interac email from: ${fromEmail}`);
+          this.logger.log(`â­ï¸ Skipping non-Interac email from: ${fromEmail}`);
           continue;
         }
 
         // Note: The old code had this commented out, so we process ALL emails
         // if (message.flags.has('\\Seen')) {
-        //   this.logger.log(`⏭️ Skipping already seen email: ${message.uid}`);
+        //   this.logger.log(`â­ï¸ Skipping already seen email: ${message.uid}`);
         //   continue;
         // }
 
-        this.logger.log(`✅ Processing Interac email from: ${fromEmail}`);
+        this.logger.log(`â Processing Interac email from: ${fromEmail}`);
 
         try {
-          this.logger.log(`📧 Processing email: ${message.uid}`);
+          this.logger.log(`ð§ Processing email: ${message.uid}`);
 
           const parsed = await simpleParser(message.source);
           const combinedText = (parsed.text || '') + ' ' + (parsed.html || '');
 
           this.logger.log(
-            `📝 Email content preview: ${combinedText.substring(0, 200)}...`,
+            `ð Email content preview: ${combinedText.substring(0, 200)}...`,
           );
 
           const parsedEv = this.parseInteracEmail(combinedText);
-          if (parsedEv.amount_cents) this.logger.log(`💰 Amount detected: ${parsedEv.amount_cents} cents`);
-          if (parsedEv.orderReference) this.logger.log(`📋 Order reference: ${parsedEv.orderReference}`);
+          if (parsedEv.amount_cents) this.logger.log(`ð° Amount detected: ${parsedEv.amount_cents} cents`);
+          if (parsedEv.orderReference) this.logger.log(`ð Order reference: ${parsedEv.orderReference}`);
 
           const ev: PaymentEvent = { ...parsedEv, email_uid: message.uid };
-          this.logger.log('🔔 Processing email event:', {
+          this.logger.log('ð Processing email event:', {
             status: ev.status,
             amount_cents: ev.amount_cents,
             orderReference: ev.orderReference,
@@ -295,13 +295,13 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
           // Mark email as read ONLY after successfully processing and updating database
           if (processResult && this.client) {
             await this.client.messageFlagsAdd(message.uid, ['\\Seen']);
-            this.logger.log(`✅ Email ${message.uid} marked as read after successful processing`);
+            this.logger.log(`â Email ${message.uid} marked as read after successful processing`);
           } else if (!processResult) {
-            this.logger.log(`⚠️ Email ${message.uid} not marked as read (no order match or no update needed)`);
+            this.logger.log(`â ï¸ Email ${message.uid} not marked as read (no order match or no update needed)`);
           }
         } catch (error: unknown) {
           const err = error as { message?: string };
-          this.logger.error('❌ Error processing email:', error);
+          this.logger.error('â Error processing email:', error);
           this.logger.error(`Email UID: ${message.uid}`);
           this.logger.error(`Error details: ${err?.message ?? String(error)}`);
           // Don't mark as read if there was an error
@@ -314,13 +314,13 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
 
   private async handleReconnect() {
     if (this.isReconnecting) {
-      this.logger.log('⏳ Reconnection already in progress...');
+      this.logger.log('â³ Reconnection already in progress...');
       return;
     }
 
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.logger.error(
-        `❌ Max reconnection attempts (${this.maxReconnectAttempts}) reached. Stopping reconnection attempts.`,
+        `â Max reconnection attempts (${this.maxReconnectAttempts}) reached. Stopping reconnection attempts.`,
       );
       return;
     }
@@ -348,17 +348,17 @@ export class ImapService implements OnModuleInit, OnModuleDestroy {
     );
 
     this.logger.log(
-      `🔄 Attempting to reconnect in ${delay / 1000} seconds (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`,
+      `ð Attempting to reconnect in ${delay / 1000} seconds (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`,
     );
 
     this.reconnectTimer = setTimeout(async () => {
       try {
         await this.startImap();
-        this.logger.log('✅ IMAP reconnected successfully');
+        this.logger.log('â IMAP reconnected successfully');
         this.isReconnecting = false;
         this.reconnectAttempts = 0;
       } catch (error) {
-        this.logger.error('❌ Reconnection failed:', error);
+        this.logger.error('â Reconnection failed:', error);
         this.isReconnecting = false;
         // Try again
         this.handleReconnect();
@@ -430,7 +430,7 @@ if (orderReference) {
       if (match && match[1]) {
         const email = match[1].trim().toLowerCase();
         if (!email.includes('interac.ca') && !email.includes('payments.interac')) {
-          this.logger.log(`📤 Transfer sender email detected: ${email}`);
+          this.logger.log(`ð¤ Transfer sender email detected: ${email}`);
           return email;
         }
       }
@@ -440,7 +440,7 @@ if (orderReference) {
     for (const email of emails) {
       const lower = email.toLowerCase();
       if (!lower.includes('interac.ca') && !lower.includes('payments.interac') && !lower.includes('noreply')) {
-        this.logger.log(`📤 Transfer sender email (fallback): ${lower}`);
+        this.logger.log(`ð¤ Transfer sender email (fallback): ${lower}`);
         return lower;
       }
     }
@@ -458,7 +458,7 @@ if (orderReference) {
 
   private async processEvent(ev: PaymentEvent): Promise<boolean> {
     const threshold = this.getConfidenceThreshold();
-    this.logger.log('🔄 Processing payment event:', {
+    this.logger.log('ð Processing payment event:', {
       status: ev.status,
       amount_cents: ev.amount_cents,
       orderReference: ev.orderReference,
@@ -468,23 +468,23 @@ if (orderReference) {
     });
 
     if (!ev.amount_cents) {
-      this.logger.log('⚠️ No amount detected, skipping matching');
+      this.logger.log('â ï¸ No amount detected, skipping matching');
       return false;
     }
 
     const matchResult = await this.findMatchingOrder(ev);
 
     if (!matchResult) {
-      this.logger.log(`⚠️ No matching order found for amount: ${ev.amount_cents}`);
+      this.logger.log(`â ï¸ No matching order found for amount: ${ev.amount_cents}`);
       return false;
     }
 
     const { order, confidence } = matchResult;
-    this.logger.log(`✅ Found matching order: ${order.id} (${confidence}% confidence)`);
+    this.logger.log(`â Found matching order: ${order.id} (${confidence}% confidence)`);
 
     if (confidence < threshold) {
       this.logger.log(
-        `⏭️ Confidence ${confidence}% below threshold ${threshold}% - skipping auto-confirm (manual review recommended)`,
+        `â­ï¸ Confidence ${confidence}% below threshold ${threshold}% - skipping auto-confirm (manual review recommended)`,
       );
       return false;
     }
@@ -498,7 +498,7 @@ if (orderReference) {
 
     if (newStatus === oldStatus) {
       this.logger.log(
-        `⚠️ Order ${order.id} status is already ${newStatus}, skipping update`,
+        `â ï¸ Order ${order.id} status is already ${newStatus}, skipping update`,
       );
       return false;
     }
@@ -507,7 +507,7 @@ if (orderReference) {
     const updatedOrder = await this.orderRepository.save(order);
 
     this.logger.log(
-      `✅ Order ${order.id} updated to status: ${newStatus} (was ${oldStatus}) - confidence ${confidence}%`,
+      `â Order ${order.id} updated to status: ${newStatus} (was ${oldStatus}) - confidence ${confidence}%`,
     );
 
     if (updatedOrder && newStatus !== oldStatus) {
@@ -517,7 +517,7 @@ if (orderReference) {
           .sendOrderStatusEmails(updatedOrder, oldStatus, merchantEmail)
           .catch((err) =>
             this.logger.error(
-              '❌ Error sending email notifications after status change:',
+              'â Error sending email notifications after status change:',
               err,
             ),
           );
@@ -533,7 +533,7 @@ if (orderReference) {
 
   /**
    * Find order matching the payment event and return it with explicit confidence score.
-   * Confidence: reference+amount = 100%, amount+sender email = 90%, amount only = 70%, fuzzy = 50–100%.
+   * Confidence: reference+amount = 100%, amount+sender email = 90%, amount only = 70%, fuzzy = 50â100%.
    * Note: order.total is stored in dollars; ev.amount_cents is in cents.
    */
   private async findMatchingOrder(ev: PaymentEvent): Promise<MatchResult | null> {
@@ -558,7 +558,7 @@ if (orderReference) {
   });
 
   if (exactMatch) {
-    this.logger.log(`✅ Found exact match (ref+amount): Order ${exactMatch.id} → 100% confidence`);
+    this.logger.log(`â Found exact match (ref+amount): Order ${exactMatch.id} â 100% confidence`);
     return { order: exactMatch, confidence: 100 };
   }
 }
@@ -577,7 +577,7 @@ if (orderReference) {
 
       if (amountAndSenderMatch) {
         this.logger.log(
-          `✅ Found amount+sender match: Order ${amountAndSenderMatch.id} → 90% confidence`,
+          `â Found amount+sender match: Order ${amountAndSenderMatch.id} â 90% confidence`,
         );
         return { order: amountAndSenderMatch, confidence: 90 };
       }
@@ -590,11 +590,11 @@ if (orderReference) {
       take: 1,
     });
     if (amountOnlyOrders.length > 0) {
-      this.logger.log(`✅ Found amount-only match: Order ${amountOnlyOrders[0].id} → 70% confidence`);
+      this.logger.log(`â Found amount-only match: Order ${amountOnlyOrders[0].id} â 70% confidence`);
       return { order: amountOnlyOrders[0], confidence: 70 };
     }
 
-    // Fuzzy: recent orders, score 50–100% (amount 70% + reference 30%). Compare in cents.
+    // Fuzzy: recent orders, score 50â100% (amount 70% + reference 30%). Compare in cents.
     const recentOrders = await this.orderRepository.find({
       where: { status: 'pending' },
       order: { date: 'DESC' },
@@ -634,7 +634,7 @@ if (orderReference) {
 
     if (bestMatch) {
       this.logger.log(
-        `✅ Found fuzzy match: Order ${bestMatch.id} (${bestScore}% confidence)`,
+        `â Found fuzzy match: Order ${bestMatch.id} (${bestScore}% confidence)`,
       );
       return { order: bestMatch, confidence: bestScore };
     }
@@ -647,90 +647,45 @@ if (orderReference) {
     newStatus: string,
     confidence: number,
   ) {
-    const wooUrl = this.configService.get('WOOCOMMERCE_URL');
-    const wooConsumerKey = this.configService.get('WOOCOMMERCE_CONSUMER_KEY');
-    const wooConsumerSecret = this.configService.get(
-      'WOOCOMMERCE_CONSUMER_SECRET',
-    );
+    // Use plugin AJAX callback instead of WC REST API
+    // No WC API keys needed — authenticates via license key only
+    const pluginCallbackUrl = this.configService.get('PLUGIN_CALLBACK_URL');
+    const licenseKey = this.configService.get('LICENSE_KEY');
 
-    if (!wooUrl || !wooConsumerKey || !wooConsumerSecret) {
-      this.logger.log('⚠️ WooCommerce API credentials not configured');
+    if (!pluginCallbackUrl || !licenseKey) {
+      this.logger.warn('⚠️ PLUGIN_CALLBACK_URL or LICENSE_KEY not set — skipping WooCommerce update');
       return;
     }
 
-    const wooStatus = this.mapToWooCommerceStatus(newStatus);
+    const order = await this.orderRepository.findOne({ where: { woo_order_id: wooOrderId } });
+    const amount = order ? (order.amount_cents / 100).toFixed(2) : '0.00';
+    const reference = order ? (order.reference || '') : '';
 
-    if (!wooStatus) {
-      this.logger.log(`⚠️ No WooCommerce status mapping for: ${newStatus}`);
-      return;
-    }
+    const params = new URLSearchParams({
+      action: 'ds_payment_callback',
+      license_key: licenseKey,
+      order_id: wooOrderId,
+      status: newStatus,
+      amount: amount,
+      confidence: confidence.toString(),
+      reference: reference,
+    });
 
-    const updatePayload = {
-      status: wooStatus,
-      meta_data: [
-        {
-          key: '_etransfer_payment_confirmed',
-          value: 'true',
-        },
-        {
-          key: '_etransfer_confidence',
-          value: confidence.toString(),
-        },
-        {
-          key: '_etransfer_updated_at',
-          value: new Date().toISOString(),
-        },
-      ],
-    };
+    try {
+      const response = await axios.post(pluginCallbackUrl, params.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 15000,
+      });
 
-    const maxRetries = 3;
-    let retryCount = 0;
-
-    while (retryCount < maxRetries) {
-      try {
-        this.logger.log(
-          `🔄 Updating WooCommerce order ${wooOrderId} to status: ${wooStatus} (attempt ${retryCount + 1})`,
-        );
-
-        const response = await axios.put(
-          `${wooUrl}/wp-json/wc/v3/orders/${wooOrderId}`,
-          updatePayload,
-          {
-            auth: {
-              username: wooConsumerKey,
-              password: wooConsumerSecret,
-            },
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            timeout: 10000,
-          },
-        );
-
-        this.logger.log(
-          `✅ WooCommerce order ${wooOrderId} updated successfully`,
-        );
-        return;
-      } catch (error: any) {
-        retryCount++;
-        this.logger.error(
-          `❌ WooCommerce API error (attempt ${retryCount}):`,
-          error.message,
-        );
-
-        if (retryCount < maxRetries) {
-          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-          this.logger.log(`⏳ Retrying in ${delay}ms...`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        } else {
-          this.logger.error(
-            `❌ Failed to update WooCommerce order after ${maxRetries} attempts`,
-          );
-        }
+      if (response.data?.success) {
+        this.logger.log(`✅ WooCommerce order ${wooOrderId} updated via plugin callback → ${newStatus}`);
+      } else {
+        this.logger.warn(`⚠️ Plugin callback returned non-success for order ${wooOrderId}: ${JSON.stringify(response.data)}`);
       }
+    } catch (error: any) {
+      this.logger.error(`❌ Plugin callback failed for order ${wooOrderId}: ${error.message}`);
     }
   }
-
   private mapToWooCommerceStatus(status: string): string | null {
     const statusMap = {
       completed: 'processing',
